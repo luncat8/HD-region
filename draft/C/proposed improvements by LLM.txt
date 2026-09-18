@@ -1,0 +1,12 @@
+• Uses layout viewport (documentElement.clientWidth)
+• Avoids 50% + translate stacking errors
+• Prevents sub-pixel drift on high-DPI screens
+• Keeps original region always visible
+• Uses extra outpaint only when available
+• No aspect ratio distortion
+
+If you want later:
+• vertical anchor preference (top / bottom)
+• smooth pan between images
+• CSS object-fit alternative
+Just say 👍
