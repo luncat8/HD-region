@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VN Background</title>
+<style>
+	* { margin:0; padding:0; box-sizing:border-box; }
+	html,body { height:100%; overflow:hidden; background:#000; }
+	.background { position:absolute; inset:0; transform-origin:center; }
+	button{
+		position:fixed; bottom:20px; right:20px;
+		padding:10px 20px; font-size:16px; cursor:pointer;
+		z-index:100;
+	}
+</style>
+</head>
+<body>
+	<img id="bg" class="background" src="1.png">
+	<button onclick="nextImg()">Next</button>
+<script>
+/* ---------- configuration (original region data) ---------- */
+var originals = {
+	'1.png': { x:512, y:256, w:768, h:1024 },
+	'2.png': { x:173, y:182, w:610, h:610 }
+};
+var imgList = Object.keys(originals);
+var curIdx = 0;
+
+/* ---------- helpers ---------- */
+function getVwVh() {
+	// visualViewport is the *real* viewport on mobile,
+	// fallback to window for desktop browsers
+	var vp = window.visualViewport || window;
+	return { vw: vp.innerWidth, vh: vp.innerHeight };
+}
+function calcScale(imgW, imgH, vw, vh) {
+	// keep aspect, fill the viewport (cover)
+	var arImg = imgW / imgH,
+	    arVw  = vw / vh;
+	return arVw > arImg ? vh / imgH : vw / imgW;
+}
+function fitBackground() {
+	var img = document.getElementById('bg');
+	if (!img) return;
+	var src = img.src.split('/').pop();
+
+	var orig = originals[src];
+	if (!orig) return;
+
+	var { vw, vh } = getVwVh();
+
+	// size of the *displayed* image (natural size * scale)
+	var scale = calcScale(orig.w, orig.h, vw, vh);
+	var dispW = orig.w * scale,
+	    dispH = orig.h * scale;
+
+	// centre of the declared region
+	var centreX = orig.x + orig.w / 2;
+	var centreY = orig.y + orig.h / 2;
+
+	// translate so that the centre stays at the centre of the screen
+	var tx = -(centreX - vw / 2) * scale;
+	var ty = -(centreY - vh / 2) * scale;
+
+	img.style.width  = Math.round(dispW) + 'px';
+	img.style.height = Math.round(dispH) + 'px';
+	img.style.transform = 'translate(' + Math.round(tx) + 'px,' +
+		Math.round(ty) + 'px)';
+}
+function nextImg() {
+	curIdx = (curIdx + 1) % imgList.length;
+	document.getElementById('bg').src = imgList[curIdx];
+}
+
+/* ---------- event wiring ---------- */
+var bg = document.getElementById('bg');
+bg.onload = fitBackground;
+
+function onResize() { fitBackground(); }
+window.addEventListener('resize', onResize);
+
+// mobile visual‑viewport changes (orientation, keyboard, etc.)
+if (window.visualViewport) {
+	window.visualViewport.addEventListener('resize', onResize);
+	// some browsers expose the *scale* factor – we need to recalc when it changes
+	window.visualViewport.addEventListener('zoom', onResize);
+}
+
+// run once if the image is already cached
+if (bg.complete) fitBackground();
+else bg.addEventListener('load', fitBackground);
+</script>
+</body>
+</html>

@@ -1,8 +1,9 @@
 # Archive
 
-This directory contains completed design artifacts and the small set of historical
-prototype material still useful for comparison or regression investigation. Runtime
-code, current scene assets, and active plans stay at the repository root.
+This directory contains completed design artifacts and historical prototype material
+useful for comparison, regression investigation, or rebuilding the project from the
+base ideas. Runtime code, current scene assets, and active plans stay at the repository
+root.
 
 ## Archived plans
 
@@ -21,7 +22,10 @@ standalone pan/zoom prototype. Its fixture paths and crop coordinates were adjus
 it can still be opened directly from `file://`.
 
 `draft/fixtures/` keeps the synthetic crop pair and the photo comparison assets used to
-reason about crop placement and filler quality. The duplicate scanners, clipboard-only
-scripts, CORS/SVG experiments, speculative generators, and superseded HTML variants
-were removed after their useful conclusions were captured in the plans and
-`findings-pitfalls-skills.md`.
+reason about crop placement and filler quality.
+
+`draft/source/` is the complete original draft snapshot, retained as a reconstruction
+starting point. It includes the original `draft.txt`, proposed improvements, all test
+image/HTML generators, old scanner experiments, and the generated reference images.
+The source snapshot is intentionally historical; new work should use the root `tools/`,
+`input/`, `img/`, and `regions.js` pipeline.
