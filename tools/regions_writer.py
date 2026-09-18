@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """regions.js writer: rewrites the GENERATED block, preserves MANUAL byte-for-byte.
 
-Contract: plan-storage.md. Later assignments win, so MANUAL overrides GENERATED.
+Contract: archive/plan-storage.md. Later assignments win, so MANUAL overrides GENERATED.
 """
 from pathlib import Path
 

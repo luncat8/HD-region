@@ -1,4 +1,4 @@
-/* hdregion.js — HD-region core math (plan-viewer.md / plan-integration.md).
+/* hdregion.js — HD-region core math (archive/plan-viewer.md / archive/plan-integration.md).
    Single source of truth for layout/zoom; experiments/layout_test.js verifies it.
    Classic script, zero DOM at load, require()-able under node. */
 (function (global) {

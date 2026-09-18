@@ -28,8 +28,8 @@ Q_LOW = 25
 Q_HD = 80
 
 CASES = [
-	("draft/C/img/3.avif", (476, 101, 1016, 900)),   # real photo outpaint
-	("draft/C/img/1.png", (512, 256, 768, 1024)),    # synthetic flat zones
+	("input/3.avif", (476, 101, 1016, 900)),   # real photo outpaint
+	("input/1.png", (477, 239, 804, 1056)),    # synthetic flat zones
 ]
 
 

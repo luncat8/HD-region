@@ -1,6 +1,6 @@
 # plan-tools — build-time python + node experiments
 
-Build-time only. Nothing here is loaded by the page. Contract for regions.js: plan-storage.md.
+Build-time only. Nothing here is loaded by the page. Contract for regions.js: archive/plan-storage.md.
 
 ## environment
 
@@ -10,7 +10,7 @@ Build-time only. Nothing here is loaded by the page. Contract for regions.js: pl
 	`.venv/` stays out of git (snapshot ignores it; add to .gitignore if committing locally).
 	pyperclip optional: import in try/except, clipboard is a convenience, not a dependency.
 
-## tools/scan.py  (rewritten from draft/C/img/scan*.py)
+## tools/scan.py  (rewritten from the archived draft scanners)
 
 Walks the book dir for `stem_c.ext` crops, matches each crop inside its base image,
 rewrites the GENERATED block of regions.js.
@@ -47,7 +47,7 @@ The typical author flow it must serve, end to end:
 	ComfyUI outpaints it to a canvas (1080p or 2K, author's single choice) -> input/x.png;
 	run one command; scene is ready.
 
-	make_scene.py --name 3 [--rect 476,101,1016,900] [--maxw 2048]
+	make_scene.py 3 [--rect 476,101,1016,900] [--maxw 2048]
 	              [--filler-q 28] [--hd-q 85] [--hole remnant|black|full] [--book .]
 
 	inputs  = input/x.ext (outpaint) + input/x_c.ext (original). rect = position of the
@@ -101,12 +101,12 @@ The typical author flow it must serve, end to end:
 	    x476 y101 w1016 h900, conf >= 0.99 (CV match of crop in pre-compression source).
 	  scan on the synthetic pair 1.png + 1_c.png reports
 	    x477 y239 w804 h1056, conf 1.00.
-	Old draft assets (holed 3.avif etc.) are references only — never build assumptions
+	The archived holed `3.avif` is a comparison reference only — never build assumptions
 	on them; pick clean pairs for experiments.
 
 ## experiments/ (node, not loaded by the page)
 
-	layout_test.js        shipped; fuzz-verifies I1/I2/I3 of plan-viewer.md (exit 0).
+	layout_test.js        shipped; fuzz-verifies I1/I2/I3 of archive/plan-viewer.md (exit 0).
 	encode_test.py        shipped; AVIF byte measurements behind the hole decision
 	                      (.venv/bin/python experiments/encode_test.py).
 	regions_load.js       (added with implementation) requires regions.js, asserts every
@@ -114,11 +114,11 @@ The typical author flow it must serve, end to end:
 
 ## order of implementation (for the fork that executes the plans)
 
-	1 tools/regions_writer.py + scan.py; run over draft/C/img → regions.js; acceptance =
+	1 tools/regions_writer.py + scan.py; run over input → regions.js; acceptance =
 	  the values above (3.avif → 476,101,1016,900).
-	2 make_scene.py; run on draft assets; filler size within the encode_test table's
+	2 make_scene.py; run on input assets; filler size within the encode_test table's
 	  range; boundary reads as the intended quality step.
-	3 hdregion.js (math out of experiments) + viewer.js + index.html per plan-viewer.md;
+	3 hdregion.js (math out of experiments) + viewer.js + index.html per archive/plan-viewer.md;
 	  experiments/layout_test.js requires hdregion.js and stays green.
-	4 snowfall-hdregion.js adapter per plan-integration.md; test inside a snowfall page.
+	4 snowfall-hdregion.js adapter per archive/plan-integration.md; test inside a snowfall page.
 	5 move implemented plans to archive/ (AGENTS.md).

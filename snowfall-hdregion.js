@@ -1,4 +1,4 @@
-/* snowfall-hdregion.js — HD-region controller for snowfall-core (plan-integration.md).
+/* snowfall-hdregion.js — HD-region controller for snowfall-core (archive/plan-integration.md).
    Subscriber only: never adds scroll listeners of its own, never reads layout in frame,
    writes only the child imgs of .snow-hd wagons (the engine owns the wagon element).
    Gestures: read mode = shift+wheel zoom; inspect mode (checkbox / key i) = full pan-zoom. */
@@ -161,7 +161,7 @@ function resetWagon(i) {
 	setView(i, 1, 0, 0);
 }
 
-/* ---------------- arbitration (plan-integration.md) ---------------- */
+/* ---------------- arbitration (archive/plan-integration.md) ---------------- */
 
 function onWheel(event) {
 	if (!inspect && !event.shiftKey) return;      /* read mode: engine scrolls */

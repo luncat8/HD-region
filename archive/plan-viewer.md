@@ -1,7 +1,7 @@
 # plan-viewer — the runtime page
 
-Final plan. Base draft: `draft/C/1BBG_hd_pan_zoom-1.htm` (the most complete one).
-Storage contract: `plan-storage.md`. Tooling: `plan-tools.md`.
+Final plan. Historical prototype: `archive/draft/prototypes/standalone/1BBG_hd_pan_zoom-1.htm` (the most complete one).
+Storage contract: `archive/plan-storage.md`. Tooling: `archive/plan-tools.md`.
 
 ## scope
 
@@ -20,13 +20,13 @@ deep links, transitions between scenes, tiles.
 
 	hdregion.js  the core: layout/zoom math + view-state math, node-requireable, zero DOM
 	             at load; the single source the experiments and both wrappers use
-	             (plan-integration.md).
+	             (archive/plan-integration.md).
 	viewer.js    standalone wrapper: window gestures + Next button + preload.
 	index.html   markup + css only.
-	regions.js   data (plan-storage.md).
+	regions.js   data (archive/plan-storage.md).
 
 	In a snowfall book the standalone viewer is replaced by the snowfall adapter
-	(plan-integration.md); this page remains the QA harness and the no-engine book.
+	(archive/plan-integration.md); this page remains the QA harness and the no-engine book.
 	Standalone gestures (no engine to arbitrate with): wheel = zoom around cursor,
 	drag / one finger = pan, pinch = zoom, double-tap = reset.
 
@@ -109,7 +109,7 @@ style writes (both images, same transform family):
 	INTENDED (author decision): it is the attention cue separating the artist's area from
 	generated filler. No runtime mask, no feather — feathering by blur was measured and
 	lost (experiments/encode_test.py + author's own test: quality-adjust beats blur).
-	The base's ROI holds a 1/16 "remnant" of the art (plan-tools.md), so:
+	The base's ROI holds a 1/16 "remnant" of the art (archive/plan-tools.md), so:
 	  the hd edge lands on colour-continuous content (no black-edge ringing halo);
 	  without hd (missing file, no-JS) the page degrades to a blurry-but-complete
 	  picture, never a black rectangle.
@@ -137,7 +137,7 @@ style writes (both images, same transform family):
 	              object litter — replaced as above.
 	-1            kept as the core; additions: path-correct lookup, no-JS sizing,
 	              rAF/dirty render, pointer-only input, seam strategy, fallbacks.
-	all drafts    data lived inside the html — moved to regions.js (plan-storage.md).
+	all drafts    data lived inside the html — moved to regions.js (archive/plan-storage.md).
 
 ## verification
 

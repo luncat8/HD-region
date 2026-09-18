@@ -6,17 +6,17 @@ Verified notes for agents working on this repo. Each item says how it was checke
 
 	fetch()/XHR from file:// is blocked (opaque origin). JSON sidecars are a dead end.
 	classic <script src>, <img>, <link> from the same tree DO load from file://.
-	=> region data must ship as a .js manifest, not .json (plan-storage.md).
+	=> region data must ship as a .js manifest, not .json (archive/plan-storage.md).
 	<object data="x.svg"> loads but contentDocument is opaque on file:// — the
 	CORS_SVG drafts could never work; do not retry that road.
 	canvas getImageData on a file:// image taints in Chrome — no metadata-in-image.
 
 ## draft scan scripts were inverted (checked by reading code + image dims)
 
-	all of draft/{C/img,D}/scan*.py used the _c crop as container and the base as
+	all archived draft scanner variants used the _c crop as container and the base as
 	template; base (1920x1536) can never match inside its crop (804x1056) → always
 	None → the "не находит" bug in draft.txt. scan.py additionally returned container
-	dims as w/h. Fixes specified in plan-tools.md.
+	dims as w/h. Fixes specified in archive/plan-tools.md.
 
 ## the draft clamp is NOT the bug (measured, experiments/layout_test.js)
 
@@ -33,7 +33,7 @@ Verified notes for agents working on this repo. Each item says how it was checke
 
 ## pip here is PEP-668 managed (observed)
 
-	plain `pip install pillow` refuses; tools must use a venv (plan-tools.md).
+	plain `pip install pillow` refuses; tools must use a venv (archive/plan-tools.md).
 
 ## snowfall-core integration (verified by reading snowfall.js, 2026-09 clone)
 

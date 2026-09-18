@@ -13,7 +13,7 @@ synchronous passive scroll handler (no rAF), `frame()` must not read layout or a
 	                       experiments/layout_test.js), gesture math, per-scene view state.
 	                       require()-able in node (module.exports guard), zero DOM at load.
 	viewer.js              standalone wrapper: window gestures + Next button + preload
-	                       (plan-viewer.md). QA page and books without snowfall.
+	                       (archive/plan-viewer.md). QA page and books without snowfall.
 	snowfall-hdregion.js   thin adapter: Snowfall subscriber + gesture arbitration with
 	                       the engine + inspect HUD. This plan.
 

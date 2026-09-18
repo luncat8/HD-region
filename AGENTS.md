@@ -34,21 +34,22 @@
 	base image (`img/x.ext`)  - outpainted, compressed full background
 	crop (`img/x_c.ext`)      - sharp 1:1 original region ("hd")
 	region                    - crop rect in base pixels {x,y,w,h}; trust detection, not notes
-	storage                   - regions.js, classic <script>, GENERATED + MANUAL blocks (plan-storage.md)
+	storage                   - regions.js, classic <script>, GENERATED + MANUAL blocks (archive/plan-storage.md)
 	layout invariants         - region always visible at zoom 1; cover viewport when possible;
 	                            proven by experiments/layout_test.js
 	integration               - hdregion.js core + viewer.js standalone + snowfall-hdregion.js
 	                            adapter (Snowfall.use subscriber; gestures: shift+wheel zoom,
-	                            inspect checkbox for no-mouse devices) — plan-integration.md
+	                            inspect checkbox for no-mouse devices) — plan-snowfall-core-integration.md
 	pipeline                  - one resolution per scene; make_scene.py emits blurred-low-q base
-	                            + high-q 1:1 hd crop + regions entry — plan-tools.md
+	                            + high-q 1:1 hd crop + regions entry — archive/plan-tools.md
 
 
 ## files
 
 findings-pitfalls-skills.md - notes and pitfalls for LLM agents. write here if found good way to do something.
 
-archive/ - for implemented plans
+archive/ - completed plans and curated historical prototypes
+plan-snowfall-core-integration.md - active follow-up for snowfall image positioning
 
 experiments/ - measurement scripts (node), not loaded by the page.
 experiments/logs/ - keep useful;
@@ -56,7 +57,7 @@ experiments/logs/ - keep useful;
 hdregion.js - core layout/zoom math (node-testable, single source)
 viewer.js, index.html - standalone book page (QA + no-engine books)
 snowfall-hdregion.js, snowfall-demo.html, vendor/snowfall.js - engine integration + QA page
-regions.js - GENERATED + MANUAL scene data (plan-storage.md)
+regions.js - GENERATED + MANUAL scene data (archive/plan-storage.md)
 tools/ - build-time python (scan, make_scene, regions_writer, match)
 input/ - scene sources (outpaint + hd crop); img/ - generated scene assets
 

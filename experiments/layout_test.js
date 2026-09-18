@@ -76,7 +76,7 @@ console.log('I3 zoom pivot preserved (pre-clamp):', f3 === 0 ? 'PASS' : f3 + ' F
 console.log('   (edge clamp shifted visible pivot in', clampShifts, 'of', N, 'random zooms - expected at borders)');
 
 var repo = [
-	[1920, 1080, 1920, 1536, { x: 512, y: 256, w: 768, h: 1024 }, 'img/1.png'],
+	[1920, 1080, 1920, 1536, { x: 477, y: 239, w: 804, h: 1056 }, 'img/1.avif'],
 	[1984, 1152, 1984, 1152, { x: 476, y: 101, w: 1016, h: 900 }, 'img/3.avif'],
 	[360, 780, 1920, 1536, { x: 512, y: 256, w: 768, h: 1024 }, 'phone portrait'],
 	[2560, 1080, 1984, 1152, { x: 476, y: 101, w: 1016, h: 900 }, 'ultrawide']

@@ -3,7 +3,7 @@
 
 Convention: input pair = base `name.ext` (outpaint) + crop `name_c.ext` (hd).
 Default rewrites the GENERATED block of <book>/regions.js; --check only prints.
-Acceptance (plan-tools.md): over draft/C/img it must report 3.avif -> 476,101,1016,900.
+Acceptance (archive/plan-tools.md): over input it must report 3.avif -> 476,101,1016,900.
 """
 import argparse
 import os

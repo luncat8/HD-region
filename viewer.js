@@ -1,4 +1,4 @@
-/* viewer.js — standalone HD-region page (plan-viewer.md). Math: hdregion.js.
+/* viewer.js — standalone HD-region page (archive/plan-viewer.md). Math: hdregion.js.
    Gestures here are direct (no engine to arbitrate with): wheel zooms, drag pans,
    pinch zooms, double-tap resets. In snowfall books use snowfall-hdregion.js. */
 (function () {

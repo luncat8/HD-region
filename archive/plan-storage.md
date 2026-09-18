@@ -1,6 +1,6 @@
 # plan-storage — where region properties live
 
-Final plan. Reimplementable from this file alone; drafts in `draft/` are background only.
+Final plan. Reimplementable from this file alone; curated historical material is in `archive/draft/`.
 
 ## problem
 
@@ -23,11 +23,11 @@ a hi-res crop (`hd`). This data must be:
 
 A region entry = position and size of the crop inside the base, in base pixels.
 `w/h` are the *detected crop* dims in base coordinates — not hand-typed numbers
-(draft `1_c.png` is 804x1056 while notes said 768x1024; trust the crop, not the note).
+(the archived `1_c.png` fixture is 804x1056 while old notes said 768x1024; trust the crop, not the note).
 `hd` is stretched over exactly that rect; its own pixel size may differ (still usually 1:1).
 One resolution per asset (no per-device variants): book bytes count once, screens stretch.
 The same regions.js drives the standalone viewer AND the snowfall-core adapter
-(plan-integration.md); keys come from the base img's src in either markup style.
+(archive/plan-integration.md); keys come from the base img's src in either markup style.
 
 ## candidates examined
 
@@ -70,15 +70,15 @@ One generated classic script per book: `regions.js`, next to `index.html`, loade
 	var REGIONS = window.REGIONS = window.REGIONS || {};
 
 	/* ===== GENERATED-BEGIN (tools/scan.py) ===== */
-	REGIONS['img/1.png']   = { x: 512, y: 256, w: 768,  h: 1024, hd: 'img/1_c.png',  bw: 1920, bh: 1536 }; // from 1_c.png conf=0.99
-	REGIONS['img/3.avif']  = { x: 476, y: 101, w: 1016, h: 900,  hd: 'img/3_c.avif', bw: 1984, bh: 1152 }; // from 3_c.avif conf=1.00
+	REGIONS['img/1.avif'] = { x: 477, y: 239, w: 804, h: 1056, hd: 'img/1_c.avif', bw: 1920, bh: 1536 }; // from 1_c.png conf=1.00
+	REGIONS['img/3.avif'] = { x: 476, y: 101, w: 1016, h: 900, hd: 'img/3_c.avif', bw: 1984, bh: 1152 }; // from 3_c.avif conf=0.99
 	/* ===== GENERATED-END ===== */
 
 	/* ===== MANUAL-BEGIN ===== */
 	/* Editors: override anything above, e.g.
 	   REGIONS['img/3.avif'].maxZoom = 2;
 	   REGIONS['img/3.avif'].title = 'Warehouse';
-	   SCENES = ['img/1.png', 'img/3.avif'];   // custom order / subset; default = key order
+	   SCENES = ['img/1.avif', 'img/3.avif']; // custom order / subset; default = key order
 	*/
 	/* ===== MANUAL-END ===== */
 
