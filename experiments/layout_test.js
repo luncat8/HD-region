@@ -1,73 +1,19 @@
 #!/usr/bin/env node
 /*
-	layout_test.js — verifies the layout math the final viewer will ship.
-
-	The functions below are a line-for-line model of the math chosen in
-	plan-viewer.md (the getBaseLayout / getFinalLayout / zoomAroundPoint
-	core of draft/C/1BBG_hd_pan_zoom-1.htm). They are fuzz-tested here so
-	the invariants are proven before the viewer is written:
+	layout_test.js — fuzz-verifies the math hdregion.js ships (single source).
 
 	  I1  at zoom 1 the original region is ALWAYS fully inside the viewport;
 	  I2  the viewport is covered (no black gaps) whenever covering is
 	      geometrically possible without breaking I1;
-	  I3  zoomAroundPoint keeps the image point under the cursor fixed
-	      (pre-clamp; at edges the clamp may shift it, by design).
+	  I3  zoomAround keeps the image point under the cursor fixed pre-clamp
+	      (at edges the clamp may shift it, by design).
 
 	Run: node experiments/layout_test.js   (exit 0 = all invariants hold)
 */
 
 'use strict';
 
-function clamp(v, lo, hi) {
-	return v < lo ? lo : (v > hi ? hi : v);
-}
-
-/* base layout: region contain + centered */
-function baseLayout(vw, vh, bw, bh, r, zoom, out) {
-	out.s = Math.min(vw / r.w, vh / r.h) * zoom;
-	out.w = bw * out.s;
-	out.h = bh * out.s;
-	out.tx = vw / 2 - (r.x + r.w / 2) * out.s;
-	out.ty = vh / 2 - (r.y + r.h / 2) * out.s;
-	return out;
-}
-
-/* final layout: clamp image to edges; center when smaller than viewport */
-function finalLayout(vw, vh, bw, bh, r, zoom, view, out) {
-	baseLayout(vw, vh, bw, bh, r, zoom, out);
-	var x = out.tx + view.x, y = out.ty + view.y;
-
-	if (out.w > vw) x = clamp(x, vw - out.w, 0); else x = (vw - out.w) / 2;
-	if (out.h > vh) y = clamp(y, vh - out.h, 0); else y = (vh - out.h) / 2;
-
-	out.x = x;
-	out.y = y;
-	return out;
-}
-
-/* pivot-preserving zoom (model of zoomAroundPoint, pre-clamp result) */
-function zoomAround(vw, vh, bw, bh, r, view, sx, sy, newZoom, out) {
-	finalLayout(vw, vh, bw, bh, r, view.zoom, view, L1);
-	var ix = (sx - L1.x) / L1.s;
-	var iy = (sy - L1.y) / L1.s;
-
-	view.zoom = clamp(newZoom, 1, 4);
-	baseLayout(vw, vh, bw, bh, r, view.zoom, L2);
-	view.x = sx - L2.tx - ix * L2.s;
-	view.y = sy - L2.ty - iy * L2.s;
-
-	/* pre-clamp transform: pivot must be exact here */
-	out.px = L2.tx + view.x + ix * L2.s;
-	out.py = L2.ty + view.y + iy * L2.s;
-
-	/* post-clamp: what the user actually sees (edges may shift, by design) */
-	finalLayout(vw, vh, bw, bh, r, view.zoom, view, out);
-	out.ix = ix;
-	out.iy = iy;
-	return out;
-}
-
-var L1 = {}, L2 = {};
+var H = require('../hdregion.js');
 
 function regionVisible(vw, vh, r, L) {
 	var e = 1e-6;
@@ -77,7 +23,7 @@ function regionVisible(vw, vh, r, L) {
 }
 
 /* does ANY placement exist that covers the viewport and keeps region visible? */
-function coverPossible(vw, vh, bw, bh, r, L) {
+function coverPossible(vw, vh, r, L) {
 	if (L.w < vw - 1e-9 || L.h < vh - 1e-9) return false;
 	var loX = Math.max(vw - (r.x + r.w) * L.s, vw - L.w);
 	var hiX = Math.min(-r.x * L.s, 0);
@@ -104,23 +50,22 @@ function scene() {
 }
 
 var N = 200000, f1 = 0, f2 = 0, f3 = 0, clampShifts = 0;
+var L = {}, view;
 
 for (var i = 0; i < N; i++) {
 	var c = scene();
-	finalLayout(c.vw, c.vh, c.bw, c.bh, c.r, 1, { x: 0, y: 0, zoom: 1 }, L1);
-	if (!regionVisible(c.vw, c.vh, c.r, L1)) { f1++; if (f1 < 4) console.log('I1 FAIL', c); }
-	if (coverPossible(c.vw, c.vh, c.bw, c.bh, c.r, L1) && !covers(L1, c.vw, c.vh)) {
+	view = { x: 0, y: 0, zoom: 1, maxZoom: 4 };
+	H.finalLayout(c.vw, c.vh, c.bw, c.bh, c.r, view, L);
+	if (!regionVisible(c.vw, c.vh, c.r, L)) { f1++; if (f1 < 4) console.log('I1 FAIL', c); }
+	if (coverPossible(c.vw, c.vh, c.r, L) && !covers(L, c.vw, c.vh)) {
 		f2++; if (f2 < 4) console.log('I2 FAIL', c);
 	}
 
-	/* I3: random zoom step around a random on-screen point */
-	var view = { x: 0, y: 0, zoom: 1 };
 	var sx = rnd() * c.vw, sy = rnd() * c.vh;
-	var L = zoomAround(c.vw, c.vh, c.bw, c.bh, c.r, view, sx, sy, 1 + rnd() * 3, L1);
+	H.zoomAround(c.vw, c.vh, c.bw, c.bh, c.r, view, sx, sy, 1 + rnd() * 3, L);
 	if (Math.abs(L.px - sx) > 1e-6 || Math.abs(L.py - sy) > 1e-6) {
 		f3++; if (f3 < 4) console.log('I3 FAIL', L.px - sx, L.py - sy);
 	}
-	/* informational: how often the edge clamp shifts the visible pivot */
 	var qx = L.x + L.ix * L.s, qy = L.y + L.iy * L.s;
 	if (Math.abs(qx - sx) > 0.5 || Math.abs(qy - sy) > 0.5) clampShifts++;
 }
@@ -130,20 +75,19 @@ console.log('I2 cover whenever possible        :', f2 === 0 ? 'PASS' : f2 + ' FA
 console.log('I3 zoom pivot preserved (pre-clamp):', f3 === 0 ? 'PASS' : f3 + ' FAILS');
 console.log('   (edge clamp shifted visible pivot in', clampShifts, 'of', N, 'random zooms - expected at borders)');
 
-/* hand cases from the repo test assets, for the record */
 var repo = [
 	[1920, 1080, 1920, 1536, { x: 512, y: 256, w: 768, h: 1024 }, 'img/1.png'],
-	[1920, 1080, 1984, 1152, { x: 476, y: 101, w: 1016, h: 900 }, 'img/3.avif'],
+	[1984, 1152, 1984, 1152, { x: 476, y: 101, w: 1016, h: 900 }, 'img/3.avif'],
 	[360, 780, 1920, 1536, { x: 512, y: 256, w: 768, h: 1024 }, 'phone portrait'],
 	[2560, 1080, 1984, 1152, { x: 476, y: 101, w: 1016, h: 900 }, 'ultrawide']
 ];
 for (i = 0; i < repo.length; i++) {
 	var q = repo[i];
-	finalLayout(q[0], q[1], q[2], q[3], q[4], 1, { x: 0, y: 0, zoom: 1 }, L1);
+	H.finalLayout(q[0], q[1], q[2], q[3], q[4], { x: 0, y: 0, zoom: 1, maxZoom: 4 }, L);
 	console.log(
 		(q[5] + '                    ').slice(0, 20),
-		'visible=' + regionVisible(q[0], q[1], q[4], L1),
-		'covers=' + covers(L1, q[0], q[1])
+		'visible=' + regionVisible(q[0], q[1], q[4], L),
+		'covers=' + covers(L, q[0], q[1])
 	);
 }
 

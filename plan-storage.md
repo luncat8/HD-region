@@ -25,6 +25,9 @@ A region entry = position and size of the crop inside the base, in base pixels.
 `w/h` are the *detected crop* dims in base coordinates — not hand-typed numbers
 (draft `1_c.png` is 804x1056 while notes said 768x1024; trust the crop, not the note).
 `hd` is stretched over exactly that rect; its own pixel size may differ (still usually 1:1).
+One resolution per asset (no per-device variants): book bytes count once, screens stretch.
+The same regions.js drives the standalone viewer AND the snowfall-core adapter
+(plan-integration.md); keys come from the base img's src in either markup style.
 
 ## candidates examined
 

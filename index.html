@@ -1,12 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HD-region</title>
+	<meta charset="utf-8">
+	<meta name="viewport"
+	      content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<title>HD-region</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+		html, body {
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			background: #000;
+		}
+		.background {
+			position: fixed;
+			top: 0;
+			left: 0;
+			transform-origin: 0 0;
+			pointer-events: none;
+			user-select: none;
+			-webkit-user-drag: none;
+		}
+		#bg { z-index: 1; }
+		#bg_hd { z-index: 2; }
+		/* no-JS fallback: contained plain image */
+		body:not(.js-ready) #bg {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+		}
+		body.js-ready {
+			touch-action: none;
+		}
+		button {
+			position: fixed;
+			right: 20px;
+			bottom: 20px;
+			z-index: 10;
+			padding: 10px 20px;
+			font-size: 16px;
+			cursor: pointer;
+			touch-action: manipulation;
+		}
+	</style>
 </head>
 <body>
+	<img id="bg" class="background" src="img/1.avif" alt="VN background">
+	<img id="bg_hd" class="background" alt="" aria-hidden="true">
+	<button id="nextButton" type="button">Next</button>
 
-
+	<script src="regions.js"></script>
+	<script src="hdregion.js"></script>
+	<script src="viewer.js"></script>
 </body>
 </html>

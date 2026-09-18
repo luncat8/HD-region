@@ -18,9 +18,17 @@ deep links, transitions between scenes, tiles.
 
 ## files
 
-	index.html   markup + css only
-	viewer.js    all logic, classic script
-	regions.js   data (plan-storage.md)
+	hdregion.js  the core: layout/zoom math + view-state math, node-requireable, zero DOM
+	             at load; the single source the experiments and both wrappers use
+	             (plan-integration.md).
+	viewer.js    standalone wrapper: window gestures + Next button + preload.
+	index.html   markup + css only.
+	regions.js   data (plan-storage.md).
+
+	In a snowfall book the standalone viewer is replaced by the snowfall adapter
+	(plan-integration.md); this page remains the QA harness and the no-engine book.
+	Standalone gestures (no engine to arbitrate with): wheel = zoom around cursor,
+	drag / one finger = pan, pinch = zoom, double-tap = reset.
 
 DOM:
 
@@ -58,6 +66,15 @@ Verified in `experiments/layout_test.js` (node, 200k random scenes + repo assets
 So the clamp order of draft -1 is NOT a bug — do not "fix" it. Letterboxing
 (ultrawide vs tall region) is correct: visibility outranks coverage.
 
+At implementation the functions move into hdregion.js; experiments/layout_test.js then
+requires the module instead of carrying its own copy (single source of truth).
+
+## resolution policy
+
+One asset resolution per scene; the viewer stretches it to any screen. The book's total
+weight is what matters, so per-device variants would multiply bytes for zero visual gain
+(author decision). base picked once per scene (1080p or 2K), hd at the crop's native size.
+
 Zoom pivot (kept from -1, this is the fix for the older pan_zoom.htm whose wheel
 handler computed the cursor point from view.x alone, ignoring the base translate —
 the "shifted left / wrong scale after gesture" bug from draft.txt):
@@ -86,14 +103,16 @@ style writes (both images, same transform family):
 	bg_hd: width/height = r.w*s, r.h*s ; transform: translate(x + r.x*s, y + r.y*s)
 	write width/height only when s changed; translate every dirty frame.
 
-## hd overlay and the seam
+## hd overlay and the quality step
 
-	Hard fact: a sharp crop over a compressed base shows a visible rectangular seam.
-	Runtime masking costs a filter and cross-browser mask quirks — rejected.
-	Chosen: the seam is removed at BUILD time (plan-tools.md): the base image is
-	stored already blurred outside the region with a ~300px distance-transform
-	feather (technique proven in draft/C/img/b.py), so the hd edge lands on a smooth
-	gradient and disappears. The viewer itself stays mask-free.
+	A sharp crop over a rough filler shows a visible rectangular border. That border is
+	INTENDED (author decision): it is the attention cue separating the artist's area from
+	generated filler. No runtime mask, no feather — feathering by blur was measured and
+	lost (experiments/encode_test.py + author's own test: quality-adjust beats blur).
+	The base's ROI holds a 1/16 "remnant" of the art (plan-tools.md), so:
+	  the hd edge lands on colour-continuous content (no black-edge ringing halo);
+	  without hd (missing file, no-JS) the page degrades to a blurry-but-complete
+	  picture, never a black rectangle.
 	hd load is lazy and cached: set src only when the key changes (dataset.src guard
 	from -1 kept); until loaded, the base shows through.
 	hd aspect is trusted from the region rect; the rect came from the crop itself
@@ -128,6 +147,6 @@ style writes (both images, same transform family):
 	  wheel on a corner of the region → that corner stays under the cursor;
 	  pinch midpoint pivot; drag to edge → no black gap while coverable;
 	  ultrawide window → symmetric side letterbox, region intact;
-	  Next cycles, hd appears sharp without visible seam on 3.avif;
+	  Next cycles, hd appears sharp; the ROI border reads as the intended quality step;
 	  image without entry → contained with a console warn, not blank;
 	  JS disabled → contained image; console free of CORS/network errors.

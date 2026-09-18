@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>HD-region x snowfall demo</title>
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		html { background: #101014; color: #eee; }
+		body { font: 18px/1.6 system-ui, sans-serif; }
+		#app { position: relative; max-width: 42rem; margin: 0 auto; padding: 0 1rem; }
+		section { padding: 40vh 0; }
+		p { margin: 1em 0; text-shadow: 0 1px 8px #000, 0 0 2px #000; }
+		.hint {
+			position: fixed; top: 12px; right: 12px; z-index: 60;
+			font: 13px system-ui; color: #fff; background: rgba(0,0,0,.5);
+			padding: 8px 10px; border-radius: 6px; max-width: 260px;
+		}
+		/* no-JS: pictures show contained, page stays readable prose */
+		.snow-hd { min-height: 60vh; }
+		.snow-hd img { display: block; width: 100%; max-height: 100vh; object-fit: contain; }
+	</style>
+</head>
+<body>
+	<div class="hint">scroll = read · shift+wheel = zoom bg ·
+		"inspect bg" checkbox (or key i) = pan/zoom gestures · dbl-click reset</div>
+
+	<div id="app">
+		<section>
+			<h1>HD-region inside snowfall</h1>
+			<p>The background below is a wagon: it parks while this text scrolls over it,
+			and the next wagon pushes it out. The sharp centre is a separate hi-res crop
+			laid over the compressed filler.</p>
+			<p>Try shift+wheel over the parked background: it zooms around the cursor while
+			the text and the engine keep working. On touch, use the inspect checkbox.</p>
+		</section>
+
+		<div class="snow-bg snow-hd" data-mode="cover" data-gap="100vh">
+			<img src="img/1.avif" alt="synthetic test scene">
+			<img src="img/1_c.avif" alt="" aria-hidden="true">
+		</div>
+
+		<section>
+			<p>Chapter one rides on the synthetic scene: flat outpaint zones around a gridded
+			original. The quality step at the region border is the intended attention cue —
+			filler reads as filler.</p>
+			<p>Scroll on; the next background arrives from below and pushes this one out.</p>
+		</section>
+
+		<div class="snow-bg snow-hd" data-mode="cover" data-gap="100vh">
+			<img src="img/3.avif" alt="warehouse with robot arm">
+			<img src="img/3_c.avif" alt="" aria-hidden="true">
+		</div>
+
+		<section>
+			<p>Chapter two: the photo outpaint. Zoom into the robot arm — the hi-res crop
+			covers the region at any zoom, the filler stays rough outside it.</p>
+			<p>Without JavaScript this page is still readable prose with contained pictures.</p>
+		</section>
+	</div>
+
+	<script src="regions.js"></script>
+	<script src="hdregion.js"></script>
+	<script src="vendor/snowfall.js"></script>
+	<script src="snowfall-hdregion.js"></script>
+</body>
+</html>

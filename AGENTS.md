@@ -37,6 +37,11 @@
 	storage                   - regions.js, classic <script>, GENERATED + MANUAL blocks (plan-storage.md)
 	layout invariants         - region always visible at zoom 1; cover viewport when possible;
 	                            proven by experiments/layout_test.js
+	integration               - hdregion.js core + viewer.js standalone + snowfall-hdregion.js
+	                            adapter (Snowfall.use subscriber; gestures: shift+wheel zoom,
+	                            inspect checkbox for no-mouse devices) — plan-integration.md
+	pipeline                  - one resolution per scene; make_scene.py emits blurred-low-q base
+	                            + high-q 1:1 hd crop + regions entry — plan-tools.md
 
 
 ## files
@@ -47,6 +52,13 @@ archive/ - for implemented plans
 
 experiments/ - measurement scripts (node), not loaded by the page.
 experiments/logs/ - keep useful;
+
+hdregion.js - core layout/zoom math (node-testable, single source)
+viewer.js, index.html - standalone book page (QA + no-engine books)
+snowfall-hdregion.js, snowfall-demo.html, vendor/snowfall.js - engine integration + QA page
+regions.js - GENERATED + MANUAL scene data (plan-storage.md)
+tools/ - build-time python (scan, make_scene, regions_writer, match)
+input/ - scene sources (outpaint + hd crop); img/ - generated scene assets
 
 ## sandbox
 

@@ -35,6 +35,45 @@ Verified notes for agents working on this repo. Each item says how it was checke
 
 	plain `pip install pillow` refuses; tools must use a venv (plan-tools.md).
 
+## snowfall-core integration (verified by reading snowfall.js, 2026-09 clone)
+
+	shift+wheel is NOT inert: browsers map it to horizontal scroll — any zoom shortcut on
+	shift+wheel must preventDefault.
+	coreFrame runs only on scroll/resize/refresh: gesture-driven zoom must call
+	Snowfall.step() or nothing repaints until the next scroll.
+	the engine owns EVERY style on the wagon element (size, margins, transform); an
+	integration may only style children of .snow-bg. Wagons are pointer-events:none, so
+	all zoom/pan input lives on window-level listeners anyway.
+	fixed HUD (the inspect checkbox) must be appended outside #app: the engine measures
+	anchors inside its scope.
+	never set overflow hidden/scroll/auto on any wagon ancestor to freeze scrolling —
+	it traps position:sticky and kills parking. Suspend scroll by preventDefault instead.
+	img.naturalWidth is decode metadata, not layout: legal to read in frame(); GBR is not.
+	parked wagon = wagons.pos[i]===0 && wagons.free[i]<=0 (same test the events sub uses)
+	— how the adapter picks which background a gesture zooms.
+
+## avif filler strategies (measured: experiments/encode_test.py, photo outpaint, ROI 40%)
+
+	KB q40/q25: full 45/24, black hole 33/18, remnant hole 36/19, blur hole 36/19,
+	4 tiles 34/18, hd crop q80 45.
+	quality is the dominant lever; at real filler q the black-vs-remnant gap is ~1 KB —
+	remnant wins on ringing (no hard edge) and no-JS/hd-missing grace.
+	blur pre-filter loses to plain quality drop (author's independent test agrees):
+	blur q40 = 36 KB and blurry vs full q25 = 24 KB and sharper.
+	4 tiles match black on bytes but cost 4 files + positioned imgs + crack risk.
+	per-region quality in ONE avif: stock encoders cannot (gain maps = HDR only).
+	the visible quality step at the ROI border is an intended attention cue, not a defect.
+
+## implementation lessons (first build-out)
+
+	regions writer must UPSERT: a per-scene make_scene that rewrites the whole GENERATED
+	block wipes earlier scenes; scan (full rewrite) and make_scene (upsert) now differ by
+	a replace flag.
+	CV crop matching fails on compressed or holed bases (conf 0.28 on 3.avif): match in
+	the PRE-compression source (make_scene does); scan only works on lossless pairs.
+	.venv is snapshot-excluded: rebuild it in every fresh sandbox
+	(python3 -m venv .venv && pip install pillow pillow-avif-plugin numpy opencv-python-headless).
+
 ## style house rules that bite later (AGENTS.md)
 
 	tabs, LF, no per-frame allocations: the viewer hot path must reuse scratch objects —

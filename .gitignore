@@ -6,3 +6,4 @@ bun.lock
 yarn.lock
 .kilo
 .agent-manager.json
+.venv/
