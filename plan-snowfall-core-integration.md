@@ -1,223 +1,179 @@
-# plan-snowfall-core-integration — investigate and fix image positioning
+# snowfall-core integration — final architecture
 
-Active follow-up for `snowfall-hdregion.js` and `snowfall-demo.html`. The goal is to
-make the base image and its HD crop share one correct screen-space composition while
-the snowfall-core wagon enters, parks, is pushed, and exits.
+HD-region backgrounds running inside a snowfall-core book. This is the final
+contract, good for reimplementation or for forking the engine; it does not
+describe what was changed or refer to intermediate states.
 
-The completed engine contract is in `archive/plan-integration.md`. The standalone
-layout math remains in `hdregion.js` and is covered by
-`experiments/layout_test.js`; do not create a second layout algorithm in the adapter.
-The historical proposal is reviewed in
-`archive/draft/proposed-improvements-review.md`.
+Historical follow-up notes are archived in `archive/plan-snowfall-core-integration--followup.md`.
+The engine subscriber contract is in `archive/plan-integration.md`.
 
-## problem and constraints
+## coordinate system
 
-The demo currently places the wagons inside a centered, narrow `#app` (`max-width:
-42rem`). snowfall-core sets each wagon's width to `100%`, so that width is the `#app`
-content width, not the browser viewport width. The adapter, however, calls
-`HDRegion.finalLayout()` with `window.innerWidth` and `window.innerHeight`, then writes
-those viewport-space `x/y` values as transforms on absolutely positioned images whose
-containing block is the wagon.
+The engine scope (`#app`) is the full viewport width. Prose lives in a `.copy`
+child wrapper that carries the reading-column constraint (`max-width: 42rem;
+margin: 0 auto; padding: 0 1rem`); background wagons are direct children of
+`#app` and span the full scope width. This makes the engine's
+`width: 100%; height: var(--snow-vh)` wagon box exactly match the viewport
+rectangle the HD-region math expects, with no additional origin offset.
 
-This creates two coordinate systems. At a parked position the likely horizontal error
-is the wagon's left offset from the viewport; while the wagon is entering or leaving,
-its local top also differs from the viewport top. The engine's transform on the wagon
-then composes with the adapter's child transform. This is the primary hypothesis, not
-a reason to change the proven `hdregion.js` math: prove the origin mismatch with actual
-rects before selecting the fix.
+The engine owns every style on the `.snow-bg` wagon element (box size, margins,
+`transform`). The adapter owns only the two `<img>` children:
 
-Constraints:
+- `position: absolute; top: 0; left: 0` within the wagon;
+- explicit pixel `width`/`height` and a `translate(x,y)` transform derived from
+  `HDRegion.finalLayout(vw, vh, nbW, nbH, r, view, L)`.
 
-- keep `vendor/snowfall.js` engine-owned wagon sizing, margins, sticky positioning, and
-  transform; the adapter may style only children of `.snow-hd`;
-- retain a file://-friendly classic-script/no-build runtime;
-- preserve normal reading scroll, wagon chaining, the shift+wheel arbitration, and the
-  inspect gesture mode;
-- do not use ancestor `overflow` to freeze scrolling, and do not add layout reads or
-  allocations to the subscriber frame path;
-- the base and HD child must be positioned from the same region rect and scale, with
-  no independent crop-specific offset.
+`position: sticky` forms a containing block for absolutely-positioned
+descendants, so the child's local transform composes rigidly with the engine's
+`translate3d(dx, dy, 0)` on the wagon in every state (entering, parked, pushed,
+exiting) with no second offset. At park the engine transform is
+`translate3d(0,0,0)` and child translate(x,y) in wagon-local space is identical
+to viewport space, which is what `finalLayout` computes.
 
-## Core review: prerequisites that can block the fix
+## viewport policy (single source of truth in the engine)
 
-The current vendored core is usable, but its public geometry contract is too implicit
-for a nested background integration. The adapter currently receives `window.innerWidth`
-and `window.innerHeight` from `coreFrame()`, while `wagonsMeasure()` gives a normal wagon
-`width:100%` and that percentage resolves against the wagon's parent. A vertical page
-scrollbar can also make `window.innerWidth` differ from the actual CSS content width.
-The plan must choose one authoritative viewport policy and use it in wagon sizing,
-`frame(sY, vh, vw)`, `step()` defaults, and adapter math. For the current layout a
-reasonable policy is the layout viewport width (`document.documentElement.clientWidth`)
-and the engine's chosen dynamic viewport height; do not mix `clientWidth` and
-`innerWidth` accidentally.
+One authoritative `vp = { width, height }` is maintained by the core:
 
-The demo has a second independent integration hazard: its no-JS rule
-`.snow-hd img { max-height:100vh; object-fit:contain }` remains active after the adapter
-writes explicit pixel dimensions. A base image taller than the viewport can therefore
-be constrained or redrawn inside a different replaced-element box, making correct
-math look incorrectly positioned. JS-ready styles must explicitly remove `max-width`,
-`max-height`, and `object-fit` constraints from the two controlled children while
-leaving the no-JS fallback intact.
+- `vp.width`  = `document.documentElement.clientWidth` — layout viewport width,
+  which excludes a vertical scrollbar and matches what `width: 100%` resolves
+  against for block-level elements.
+- `vp.height` = `window.innerHeight` — dynamic viewport height, which follows
+  mobile URL-bar show/hide.
 
-Recommended core improvements, in priority order:
+`measureViewport()` updates `vp` and writes `--snow-vh`/`--snow-vw` CSS custom
+properties on `<html>`. It is called at the top of `wagonsMeasure()` (before
+any subscriber measure runs), at every scroll event (mobile URL-bar changes
+fire scroll), and on resize via `refresh()`.
 
-1. Expose/cache one viewport `{ width, height }` measured by the core and use it for
-   wagon CSS and subscriber callbacks. Make `Snowfall.step()` with no arguments reuse
-   that cached value. This prevents every adapter from re-solving scrollbar and mobile
-   viewport policy independently.
-2. Document subscriber ordering: built-in wagon measurement must run before external
-   subscribers that consume `Snowfall.wagons`. Add a small ordering assertion or test
-   if the public `Snowfall.use()` API is kept.
-3. If constrained reading columns are a supported use case beyond this demo, add a
-   first-class engine-owned full-bleed/viewport wagon mode that reports its local
-   origin. Do not make every adapter read a transformed wagon's rect during `frame()`
-   or override engine-owned margins and transforms. This can remain out of scope if
-   the book contract requires all background wagons to be direct children of a
-   full-width snowfall scope.
-4. Keep the existing `wagons` typed-array state and sticky-chain math unchanged until
-   geometry evidence requires otherwise. Neither the region clamp nor sticky chain is
-   the likely cause of this defect.
+Subscriber `frame(sY, vh, vw)` callbacks always receive these cached values.
+`Snowfall.step(sY)` with only `sY` (no vh/vw) reuses the cached `vp`; adapters
+do not read `window.innerWidth`/`clientWidth` themselves. The cached viewport
+is exposed as `Snowfall.viewport` (read-only).
 
-These are contract improvements, not a reason to duplicate layout math in the core.
-The standalone invariants remain the authority for region scale, clamp, and zoom pivot.
+## JS-ready CSS
 
-## 1. Reproduce and instrument the geometry
+The no-JS fallback keeps images readable:
 
-Use the current demo and the synthetic fixture with visible colored borders before
-changing layout or math. Test both the demo's narrow centered `#app` and a temporary
-full-width scope.
+```css
+.snow-hd { min-height: 60vh; }
+.snow-hd img { display: block; width: 100%; max-height: 100vh; object-fit: contain; }
+```
 
-At each state capture, for every wagon:
+When JS boots, the adapter immediately adds `snow-ready` to `<html>` and the
+demo stylesheet enables:
 
-- viewport size and `window.scrollY`;
-- `Snowfall.wagons.y/free/pos/ext` and the wagon's computed width/height/transform;
-- wagon `getBoundingClientRect()` and the base/HD child rects;
-- the region entry, natural base dimensions, and the `finalLayout()` result;
-- whether the wagon is entering, parked (`pos === 0 && free <= 0`), pushed, or exiting.
+```css
+html.snow-ready .snow-hd { min-height: 0; }
+html.snow-ready .snow-hd img {
+	max-width: none !important; max-height: none !important;
+	object-fit: fill !important;
+}
+```
 
-Rect reads belong in a debug harness or measurement callback only, never in
-`snowfall-hdregion.js:frame()`. A temporary `?debug=1` overlay/log is preferable to
-permanent console noise. Compare the expected screen-space rectangle from `L` with the
-actual child rectangles. For a parked wagon, the expected base left/top are `L.x/L.y`
-and the expected HD rect is `L.x + r.x*L.s`, `L.y + r.y*L.s`; record the residual
-against those values rather than judging only by the photograph.
+Without this, `max-height: 100vh` / `object-fit: contain` constrains the
+replaced-element box after the adapter writes explicit pixel dimensions, making
+correct math look mis-positioned.
 
-Reproduce at least these viewport/scope combinations:
+## adapter (snowfall-hdregion.js)
 
-- 1280x720 and 1440x900 with the current centered `#app`;
-- 360x780 and 768x1024 for narrow/tall behavior;
-- 2560x1080 for ultrawide behavior;
-- first paint, scroll into each wagon, parked, forward push, reverse scroll, and
-  scene-to-scene transition;
-- base-only, HD-loaded, and a deliberate missing-HD fallback.
+Subscriber API: `Snowfall.use({ measure, frame, off })`.
 
-The colored synthetic scene must show the crop border and the full base region. Do not
-mistake the intentional low-quality/black-hole fixture for a positioning failure: the
-HD border, not image detail, is the alignment oracle.
+- `measure()` collects `.snow-hd` wagons in scope order, resolves their `REGIONS`
+  entries keyed by the base image `src` (normalised: strip query/hash/`./`),
+  binds `load` listeners on both `<img>`s, pre-allocates typed arrays
+  (wagonIdx, rx/ry/rw/rh, hasR, maxZ, zoom, vx/vy, nbW/nbH, nwH/nhH,
+  lastWB/lastHB/lastWH/lastHH, lastSX/lastSY/lastSXH/lastSYH, hdLoaded), and
+  grows them on wagon-count increase.
+- `frame(sY, vh, vw)` walks wagons; reads `naturalWidth`/`naturalHeight` on the
+  BASE image only (decode metadata, not layout — allowed in the hot path); if
+  the natural size changed, invalidates size caches; calls
+  `HDRegion.finalLayout(vw, vh, nbW, nbH, rgn, view, L)` with a module-level
+  scratch `rgn`, `view`, and `L`; writes `width/height/transform` on the base
+  and HD imgs only when values change (write-gated). The HD path has **zero
+  DOM reads** — it uses `hdLoaded[]` (not `style.display`) and `nwH[]/nhH[]`
+  (not `naturalWidth/naturalHeight`). Allocates no objects/arrays/closures/
+  strings beyond the transform strings themselves, and only when the value
+  changed.
+- `off()` clears child img styles for clean engine disable.
 
-## 2. Establish the coordinate contract
+The HD `<img>` starts hidden (`display: none`); its `load` listener marks it
+loaded, unhides it, invalidates the size cache, and calls `Snowfall.step()`.
+Base `<img>` dimensions populate from `complete && naturalWidth` at bind time
+so a pre-decoded image (e.g. from cache) is sized on the first frame.
 
-Document the desired visual behavior for each wagon state:
+Missing-region / missing-HD: if no `REGIONS` entry exists the fallback treats
+the whole base as the "region" and the HD stays hidden (no second `<img>`
+src set); if a region exists but declares no `hd`, HD is hidden. No blank
+image or broken transform results.
 
-- before parking, whether the image follows the wagon's flow position or is already
-  viewport-composed;
-- while parked, the region is centered/contained exactly as standalone mode;
-- while pushed or exiting, the child remains rigidly attached to its wagon and does not
-  acquire a second scroll translation;
-- the HD crop remains exactly over the corresponding base pixels in every state.
+## gesture arbitration
 
-Then choose one origin and use it consistently:
+Read mode (default):
 
-1. **Preferred minimal integration fix:** make the snowfall scope full viewport width and
-   put the readable copy in a separate constrained child. In the demo, `#app` remains
-   the engine scope but becomes full width; a `.copy` wrapper receives the `42rem`
-   max-width, while `.snow-bg` wagons are direct full-width children. The engine's
-   existing `width:100%` then has the same horizontal coordinate system as the adapter's
-   `vw`. Keep the adapter's child transforms local to the wagon and leave wagon styles
-   to the engine.
-2. **If nested/constrained wagons are a required public use case:** extend the engine
-   integration contract rather than guessing in the adapter. Provide a documented
-   viewport-wide wagon mode or a cached wagon origin supplied during measurement. The
-   adapter must convert the `HDRegion` viewport layout to wagon-local coordinates using
-   that contract; it must not call `getBoundingClientRect()` from `frame()` and must
-   not fight engine-owned `width`, margins, or transform.
-3. **Only if state captures show a vertical requirement:** define how the engine's
-   sticky transform and the child's local position compose for entering/exiting wagons.
-   Prefer an engine-provided local frame/offset over a second scroll listener. Do not
-   make a child `position:fixed` under a transformed wagon without testing its containing
-   block behavior.
+- plain wheel → engine scrolls;
+- shift+wheel → zoom the parked wagon around the cursor (calls
+  `event.preventDefault()` — without this browsers map shift+wheel to
+  horizontal page scroll).
 
-Do not change the layout clamp or zoom pivot until the origin comparison proves a math
-error. The standalone invariants are already green; any new math must remain a pure
-function and receive a focused test before it reaches the adapter.
+Inspect mode (toggle via HUD checkbox or key `i`; `Esc` exits; double-click
+resets the active wagon to zoom 1):
 
-## 3. Implement the smallest fix
+- wheel → zoom;
+- drag / single-finger → pan;
+- pinch → zoom around midpoint;
+- `touchmove` is `preventDefault`'d so the page does not scroll while panning;
+  no ancestor `overflow: hidden` trick is used (any overflow on a sticky
+  ancestor breaks parking).
 
-Apply the selected contract in this order:
+The active wagon for a gesture is the parked one (`wagons.pos[i]===0 &&
+wagons.free[i]<=0`); if no wagon is parked the last wagon with `free<=vh` is
+used (a wagon entering or exiting). Gesture handlers never read layout; they
+mutate per-wagon `zoom/vx/vy` and call `Snowfall.step()`.
 
-1. make the core's viewport source explicit and consistent, or add the smallest
-   engine-owned viewport/bleed capability required by the evidence;
-2. restructure `snowfall-demo.html` so prose width and wagon width are independent;
-3. add a JS-ready child-image style that removes the no-JS `max-height`/`object-fit`
-   constraints before the adapter writes explicit pixel dimensions;
-4. update the adapter only where its coordinate assumptions require it;
-5. keep the region lookup keyed by the base image path and keep the optional HD fallback;
-6. remove any temporary debug instrumentation after the acceptance run, or keep it
-   behind an explicit debug flag;
-7. while touching the frame path, reuse a preallocated region/scratch object instead of
-   constructing a `{x,y,w,h}` object for every wagon on every frame, and remove any
-   other unnecessary frame-path work. Do not trade positioning correctness for a
-   premature optimization.
+HUD is appended to `<body>` outside `#app` so the engine does not measure it as
+an anchor.
 
-The adapter's effective contract should be explicit in its header and in the demo:
-engine owns the wagon box and transform; HD-region owns the two child image boxes and
-local transforms; both use one viewport/local-origin definition.
+## tests
 
-## 4. Add regression coverage
+- `node experiments/layout_test.js` — 200k-fuzz proof of hdregion.js invariants
+  I1 (region always visible at zoom 1), I2 (cover viewport when possible),
+  I3 (zoom pivot preserved pre-clamp).
+- `node experiments/regions_load.js` — regions.js sanity (integer fields,
+  referenced files exist).
+- `node experiments/snowfall-integration-test.js` — integration-specific:
+  viewport contract (`vp.width=clientWidth`, consistent across
+  `step/refresh/frame` subscribers), HD alignment at zoom 1 and zoom 2 across
+  six viewports (portrait, landscape, desktop, ultrawide), missing-region
+  fallback, no per-frame object/array allocations in adapter `frame()`, no
+  scroll listener or wagon-transform write by the adapter, snow-ready CSS
+  overrides present, layout invariants still green.
 
-Extend the repository's dependency-free checks with an integration geometry test or a
-small deterministic harness. It must cover:
+## engine changes from stock snowfall-0.4
 
-- narrow centered scope versus full-width scope, including the measured origin offset;
-- a viewport with a vertical scrollbar, proving the chosen `clientWidth`/`innerWidth`
-  policy is used consistently by the core, wagon, and adapter;
-- base and HD rect alignment at zoom 1 and at a non-default zoom;
-- computed JS-ready styles do not retain `max-height`/`object-fit` constraints;
-- portrait, landscape, and ultrawide viewports;
-- the four wagon states and reverse scroll;
-- missing region/HD behavior without a blank image;
-- no mutation of wagon `style.transform` by the adapter;
-- no extra frame-time layout reads, and no new per-frame object/array/closure
-  allocations.
+The vendored `vendor/snowfall.js` adds four fixes over upstream 0.4 — these
+should be proposed upstream:
 
-If the engine needs a public viewport-wide mode, test that mode through the same harness
-and keep the existing snowfall-core tests green. Avoid making the test depend on timing
-or a particular browser's fractional-pixel rounding; use a 1px tolerance for rendered
-rect comparisons and assert the crop/base edge residuals independently.
+1. **Cached viewport.** A single `vp = { width, height }` measured via
+   `measureViewport()` is used for `--snow-vh`/`--snow-vw` CSS vars, wagon
+   sizing, gap parsing, morph default range, and subscriber `frame()`
+   callbacks. `vw = clientWidth; vh = innerHeight`. Adapters no longer need to
+   guess about scrollbar or mobile URL-bar policy.
+2. **Exposed `Snowfall.viewport`.** Read-only getter on the instance and on
+   the default namespace so subscribers and debug tools can read the
+   authoritative viewport without duplicating measurement.
+3. **`step()` defaults.** Calling `Snowfall.step(sY)` with only a scroll
+   position reuses cached `vp` instead of re-reading `window.innerWidth/Height`.
+4. **Pos-clamp to parent bottom.** After `chain()`, each wagon's `pos[i]` is
+   clamped to `cap = pBot[i] − sY − ext[i] − mb[i]`. Without this, once the
+   parent scope scrolls past the viewport the chain position stays at 0
+   (parked) while `stickyShown`'s cap goes to −∞, so `dy = pos − sh` grows
+   linearly with scroll: the wagon is translated back onto the screen and the
+   scroll range inflates ("never-ending scroll"). With the clamp, `pos` tracks
+   `cap` past the parent and `dy` converges to 0 — the wagon follows its
+   sticky position off-screen. Max |dy| is bounded by `ext` (the chain's
+   maximum push). Verified: `experiments/chain_sim.js`.
 
-## 5. Browser acceptance checklist
-
-Run the node checks first:
-
-- `node experiments/layout_test.js`
-- `node experiments/regions_load.js`
-- `node experiments/snowfall-integration-test.js` (add this or use the final agreed
-  test filename)
-
-Then open `snowfall-demo.html` through file:// and through a static server. Verify in a
-current desktop browser and a touch/emulation viewport:
-
-- both scenes place their HD crop exactly over the base region on first paint;
-- the region is visible at zoom 1 in every orientation and the viewport is covered when
-  the geometry allows it;
-- parked zoom follows the cursor; inspect pan/pinch follows the pointer/midpoint;
-- ordinary wheel scroll remains reading scroll, shift+wheel does not create horizontal
-  page scroll, and the inspect checkbox works without a mouse;
-- entering/pushing/exiting and reverse scrolling do not introduce a jump or a second
-  offset; text and unrelated wagons remain stationary relative to the engine;
-- delayed base/HD loads, scene changes, resize/orientation changes, and missing HD all
-  recover without stale transforms;
-- no ancestor overflow workaround, console error, or repeated idle style churn appears.
-
-Record the final coordinate contract in the active plan and keep the completed engine
-plan in `archive/` once the implementation and checks are accepted.
+These are contract cleanups, not a new layout mode. The sticky-chain math,
+wagon sizing, and subscriber ordering are unchanged; built-in subscribers
+(wagons, morph, events) are registered before user `use()` calls so user
+subscribers always see fully-populated state in `frame()`.

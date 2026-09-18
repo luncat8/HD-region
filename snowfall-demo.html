@@ -8,17 +8,31 @@
 		* { margin: 0; padding: 0; box-sizing: border-box; }
 		html { background: #101014; color: #eee; }
 		body { font: 18px/1.6 system-ui, sans-serif; }
-		#app { position: relative; max-width: 42rem; margin: 0 auto; padding: 0 1rem; }
-		section { padding: 40vh 0; }
-		p { margin: 1em 0; text-shadow: 0 1px 8px #000, 0 0 2px #000; }
+		/* #app is the engine scope — full viewport width so width:100% wagons
+		   match the (vw, vh) coordinates the HD-region adapter computes. */
+		#app { position: relative; }
+		/* section stacking context: text renders above the z-index:-1 wagons.
+		   position:relative establishes the stacking context for z-index:1
+		   children; z-index:1 on the section itself ensures the section
+		   (and its children) render above earlier sections' wagons. */
+		section { position: relative; z-index: 1; }
+		p, h1, h2, h3, h4 { max-width: 42rem; margin: 0 auto; padding: 0 1rem; }
+		h1 { font-size: 2.4rem; padding-top: 20vh; padding-bottom: .4em; }
+		h2 { font-size: 1.4rem; opacity: .7; margin-bottom: 1em; }
+		p { margin: 1em auto; text-shadow: 0 1px 8px #000, 0 0 2px #000; }
+		/* no-JS: images show contained within the wagon's viewport-height box */
+		.snow-hd img { display: block; width: 100%; max-height: 100vh; object-fit: contain; }
+		/* JS-ready: adapter owns sizing — strip no-JS constraints */
+		html.snow-ready .snow-hd img {
+			max-width: none !important; max-height: none !important;
+			object-fit: fill !important;
+		}
+		.end-pad { height: 60vh; }
 		.hint {
 			position: fixed; top: 12px; right: 12px; z-index: 60;
 			font: 13px system-ui; color: #fff; background: rgba(0,0,0,.5);
 			padding: 8px 10px; border-radius: 6px; max-width: 260px;
 		}
-		/* no-JS: pictures show contained, page stays readable prose */
-		.snow-hd { min-height: 60vh; }
-		.snow-hd img { display: block; width: 100%; max-height: 100vh; object-fit: contain; }
 	</style>
 </head>
 <body>
@@ -26,37 +40,52 @@
 		"inspect bg" checkbox (or key i) = pan/zoom gestures · dbl-click reset</div>
 
 	<div id="app">
-		<section>
-			<h1>HD-region inside snowfall</h1>
-			<p>The background below is a wagon: it parks while this text scrolls over it,
-			and the next wagon pushes it out. The sharp centre is a separate hi-res crop
-			laid over the compressed filler.</p>
-			<p>Try shift+wheel over the parked background: it zooms around the cursor while
-			the text and the engine keep working. On touch, use the inspect checkbox.</p>
+
+		<!-- chapter 1: synthetic scene -->
+		<section data-bg="#2c3e50" data-fg="#ecf0f1" data-style="ch1" data-range="240">
+			<h1>HD-region × snowfall</h1>
+			<h2>A hi-res crop over a compressed background, inside a scroll book</h2>
+			<p>The full-bleed background below is a snowfall wagon: it parks while
+			this text scrolls over it. The sharp centre is a separate hi-res crop
+			laid over the compressed filler — hover near the middle to see the
+			quality step.</p>
+			<p>Try <strong>shift + wheel</strong> while the background is parked:
+			it zooms around the cursor. On touch, check "inspect bg" below.</p>
+
+			<div class="snow-bg snow-hd" data-mode="cover" data-gap="60vh">
+				<img src="img/1.avif" alt="synthetic test scene">
+				<img src="img/1_c.avif" alt="" aria-hidden="true">
+			</div>
+
+			<p>Chapter one rides on the synthetic scene: flat outpaint zones around a
+			gridded original. The quality step at the region border is the intended
+			attention cue — filler reads as filler.</p>
+			<p>Scroll on; the next background arrives from below and pushes this one
+			out of the viewport.</p>
 		</section>
 
-		<div class="snow-bg snow-hd" data-mode="cover" data-gap="100vh">
-			<img src="img/1.avif" alt="synthetic test scene">
-			<img src="img/1_c.avif" alt="" aria-hidden="true">
-		</div>
+		<!-- chapter 2: photo outpaint -->
+		<section data-bg="#1a1a2e" data-fg="#e0e0e0" data-style="ch2" data-range="240">
+			<h1>Chapter two</h1>
+			<h2>The warehouse robot arm</h2>
+			<p>Below is a photo outpaint: the base image is a wide-angle warehouse
+			scene compressed for fast loading; the crop covers the robot arm region
+			at full resolution.</p>
 
-		<section>
-			<p>Chapter one rides on the synthetic scene: flat outpaint zones around a gridded
-			original. The quality step at the region border is the intended attention cue —
-			filler reads as filler.</p>
-			<p>Scroll on; the next background arrives from below and pushes this one out.</p>
+			<div class="snow-bg snow-hd" data-mode="cover" data-gap="60vh">
+				<img src="img/3.avif" alt="warehouse with robot arm">
+				<img src="img/3_c.avif" alt="" aria-hidden="true">
+			</div>
+
+			<p>Zoom into the robot arm — the hi-res crop covers the region at any
+			zoom level, while the filler stays rough outside it. This is the core
+			promise: attention-quality resolution where it matters, fast loading
+			everywhere else.</p>
+			<p>Without JavaScript this page is still readable prose with contained
+			pictures. The HD overlay only appears when the adapter runs.</p>
 		</section>
 
-		<div class="snow-bg snow-hd" data-mode="cover" data-gap="100vh">
-			<img src="img/3.avif" alt="warehouse with robot arm">
-			<img src="img/3_c.avif" alt="" aria-hidden="true">
-		</div>
-
-		<section>
-			<p>Chapter two: the photo outpaint. Zoom into the robot arm — the hi-res crop
-			covers the region at any zoom, the filler stays rough outside it.</p>
-			<p>Without JavaScript this page is still readable prose with contained pictures.</p>
-		</section>
+		<div class="end-pad" aria-hidden="true"></div>
 	</div>
 
 	<script src="regions.js"></script>

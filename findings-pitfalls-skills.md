@@ -78,3 +78,79 @@ Verified notes for agents working on this repo. Each item says how it was checke
 
 	tabs, LF, no per-frame allocations: the viewer hot path must reuse scratch objects —
 	the experiments file already models the pattern (module-level L1/L2).
+
+## snowfall-core viewport policy (plan-snowfall-core-integration.md fix)
+
+	window.innerWidth differs from document.documentElement.clientWidth when a vertical
+	scrollbar is present (typically 15px on desktop). Using innerWidth for vw while
+	sizing wagons with width:100% (which resolves against clientWidth) creates a
+	horizontal coordinate mismatch between engine and adapter.
+	=> engine now uses clientWidth for vw (layout viewport, scrollbar-excluded) and
+	innerHeight for vh (dynamic viewport, follows mobile URL bars), caches it once per
+	measure/scroll, exposes it on Snowfall.viewport, and feeds it to every subscriber
+	frame() callback. step() with no args reuses the cached value.
+	position:sticky creates a containing block for position:absolute descendants —
+	absolutely-positioned child imgs compose correctly with the engine's translate3d
+	on the wagon, no extra wrapper needed.
+
+## no-JS vs JS-ready CSS (image sizing)
+
+	.no-js img { max-height:100vh; object-fit:contain } is necessary for readable prose
+	before JS runs but FIGHTS explicit pixel width/height/transform written by JS
+	(replaced-element sizing overrides; the image appears contained inside a different
+	box, making correct math look misplaced).
+	=> add a html.snow-ready class immediately when the adapter boots, and scope
+	max-width/max-height/object-fit overrides to it. !important is acceptable because
+	no other code owns those properties on the controlled children.
+
+## img load listeners in an adapter
+
+	attachEventListener('load', ...) is cheap and only fires once per image. Reading
+	img.naturalWidth in frame() is allowed (it is decode metadata, not layout); but
+	when the image is not yet decoded naturalWidth is 0 and writing a 0px size/translate
+	produces a one-frame flash. Hide the hd img until its load event fires, and seed
+	nbW/nbH from already-complete images at attach time. invalidate the last-size cache
+	on load and call SF.step() — no rAF needed (coreFrame is synchronous).
+
+## subscriber ordering in snowfall-core
+
+	subscribers are invoked in the order they were use()'d. The built-in wagons subscriber
+	is registered immediately inside createCore(), before user subs run, so a user sub's
+	frame() sees fully-populated Snowfall.wagons state. No extra ordering assertion needed.
+
+## full-width scope + constrained copy (coordinate contract)
+
+	the minimal fix for nested-background positioning is to make the engine scope (#app)
+	full viewport width and place constrained prose in a child wrapper (.copy) with
+	max-width/margin:0 auto/padding. The engine's width:100% wagons then resolve to vw,
+	matching the adapter's finalLayout(vw,vh,...) output exactly in the horizontal axis.
+	No engine changes for per-wagon origin were needed.
+
+## pos-clamp: chain position vs parent bottom boundary (wagonsFrame bug, fixed)
+
+	after chain(), a wagon's pos can stay at 0 (parked) even when the parent #app has
+	scrolled entirely past the viewport. stickyShown's cap goes to −∞ in that case,
+	so dy = pos − sh grows linearly with scroll, producing translate3d(0, 5800px, 0)
+	at sY=10000.  The visual position stays at sh+dy = pos = 0 (viewport top!) — the
+	wagon never leaves the screen. Browsers extend the scroll range for large composited
+	transforms, creating the "never-ending scroll" symptom.
+	Fix: after chain(), clamp W.pos[i] to cap = pBot − sY − ext − mb.  Once the
+	parent has scrolled past, pos tracks cap and dy converges to 0 — the wagon just
+	follows its sticky position off-screen.  Max |dy| is bounded by ext (the chain's
+	maximum push).  Verified: experiments/chain_sim.js, experiments/layout_test.js.
+
+## adapter: no DOM reads in frame() hot path (hdLoaded vs style.display)
+
+	frame() must never read hEl.style.display, hEl.naturalWidth, or
+	hEl.naturalHeight — all three are DOM reads that force style recalc.
+	Instead: use the hdLoaded[] array flag (set by attachLoad/onImgLoad), and
+	nwH[]/nhH[] arrays (populated by attachLoad and invalidated on load).
+	The style.display === 'none' check was the primary cause of the HD-region
+	not being visible: if the image loaded before the listener was attached (cached
+	image race) and h.complete was false at bind time (pending decode), display
+	stayed 'none' forever.  The hdLoaded flag is set correctly in both paths:
+	(1) cached: attachLoad sets hdLoaded=1 and display='block';
+	(2) not cached: load listener sets hdLoaded=1 and display='block'.
+	After fix, frame() has zero DOM reads for the HD path (only typed array
+	lookups and arithmetic).  The base img still reads naturalWidth/naturalHeight
+	(decode metadata, not layout — explicitly allowed in the contract).

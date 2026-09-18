@@ -199,7 +199,12 @@ function createCore(opts) {
 		gap: new Float64Array(0), dir: new Uint8Array(0),
 		lastX: new Float64Array(0), lastY: new Float64Array(0), n: 0
 	};
+	/* one authoritative viewport: vw = layout viewport width (clientWidth, excludes
+	   vertical scrollbar); vh = dynamic viewport height (innerHeight, follows mobile
+	   URL bars). Cached here so wagon sizing, CSS vars, step() defaults, and
+	   subscriber frame() callbacks all agree. */
 	let lastVh = 0, lastVw = 0;
+	const vp = { width: 0, height: 0 };
 	const rootEl = hasDOM ? document.documentElement : null;
 
 	/* morph subscriber state (preallocated at measure, mutated in place) */
@@ -253,15 +258,23 @@ function createCore(opts) {
 			else { el.style.top = off; el.style.bottom = ''; }
 		}
 	}
-	function wagonsMeasure() {
-		if (!hasDOM || !scope || !scope.querySelectorAll) return;
-		injectCSS(document);
-		const vh = window.innerHeight, vw = window.innerWidth;
+	function measureViewport() {
+		if (!hasDOM) return;
+		/* vw = layout viewport width (scrollbar-excluded); vh = dynamic height. */
+		const vh = window.innerHeight;
+		const vw = rootEl.clientWidth;
+		vp.width = vw; vp.height = vh;
 		if (vh !== lastVh || vw !== lastVw) {
 			lastVh = vh; lastVw = vw;
 			document.documentElement.style.setProperty('--snow-vh', vh + 'px');
 			document.documentElement.style.setProperty('--snow-vw', vw + 'px');
 		}
+	}
+	function wagonsMeasure() {
+		if (!hasDOM || !scope || !scope.querySelectorAll) return;
+		injectCSS(document);
+		measureViewport();
+		const vh = vp.height, vw = vp.width;
 		collectSticks();
 		const found = scope.querySelectorAll('.snow-bg');
 		const els = [];
@@ -344,6 +357,17 @@ function createCore(opts) {
 		if (!n || !inst.options.wagons) { inst.debug.writes = 0; return; }
 		for (let i = 0; i < n; i++) W.free[i] = W.y[i] - sY;
 		chain(n, W.free, W.ext, W.pos);
+		/* clamp each wagon's chain position to its parent bottom.
+		   Without this, once the parent #app scrolls past the viewport the
+		   chain position stays at 0 (parked) while stickyShown's cap goes
+		   to −∞, so dy = pos − sh grows unboundedly: the wagon is translated
+		   back ONTO the screen and the scroll range inflates.  Clamping pos
+		   to cap makes dy converge to 0 past the parent — the wagon just
+		   follows its sticky position off-screen. */
+		for (let i = 0; i < n; i++) {
+			const cap = W.pBot[i] - sY - W.ext[i] - W.mb[i];
+			if (W.pos[i] > cap) W.pos[i] = cap;
+		}
 		let active = -1, parked = 0, pushed = 0, writes = 0;
 		for (let i = 0; i < n; i++) {
 			const fr = W.free[i], e = W.ext[i];
@@ -397,7 +421,7 @@ function createCore(opts) {
 		M.els = els; M.n = n;
 		M.rawRange = new Array(n); M.tokBg = new Array(n);
 		M.tokFg = new Array(n); M.cls = new Array(n);
-		const vh = window.innerHeight;
+		const vh = vp.height;
 		for (let i = 0; i < n; i++) {
 			const ds = els[i].dataset;
 			const bRaw = ds.bg !== undefined ? String(ds.bg).trim() : '';
@@ -725,6 +749,10 @@ function createCore(opts) {
 
 	function coreFrame(sY, vh, vw) {
 		if (inst.destroyed || !inst.enabled) return;
+		/* when called from scroll, vh/vw come from the cached vp measurement;
+		   when called from step() with no args, use the cached values too. */
+		if (vh === undefined) vh = vp.height;
+		if (vw === undefined) vw = vp.width;
 		const subs = inst.subs;
 		for (let i = 0; i < subs.length; i++) subs[i].frame(sY, vh, vw);
 		if (inst.onFrame) inst.onFrame(inst);
@@ -732,17 +760,19 @@ function createCore(opts) {
 	inst.refresh = function(replay) {
 		if (inst.destroyed || !hasDOM) return;
 		inst.stamp++;
+		/* remeasure viewport before any subscriber's measure so CSS vars
+		   and per-subscriber layout agree. */
+		if (hasDOM) measureViewport();
 		const subs = inst.subs;
 		for (let i = 0; i < subs.length; i++) subs[i].measure(replay);
-		coreFrame(window.scrollY || 0, window.innerHeight, window.innerWidth);
+		coreFrame(window.scrollY || 0, vp.height, vp.width);
 	};
 	inst.step = function(sY, vh, vw) {
 		if (inst.destroyed) return;
 		if (sY === undefined) sY = hasDOM ? window.scrollY || 0 : 0;
-		if (vh === undefined) vh = hasDOM ? window.innerHeight : 0;
-		if (vw === undefined) vw = hasDOM ? window.innerWidth : 0;
 		coreFrame(sY, vh, vw);
 	};
+	Object.defineProperty(inst, 'viewport', { get: function() { return vp; } });
 	inst.anchorY = function(el) {
 		if (!hasDOM || !el || !el.__snowA || !el.__snowA.parentNode) return 0;
 		return el.__snowA.getBoundingClientRect().top + (window.scrollY || 0);
@@ -769,7 +799,11 @@ function createCore(opts) {
 		}
 	};
 	function onScroll() {
-		coreFrame(window.scrollY || 0, window.innerHeight, window.innerWidth);
+		/* scroll can fire without a resize (no reflow needed), but mobile chrome
+		   fires scroll when the URL bar hides/shows — innerHeight changes. Cheaper
+		   to re-measure viewport here than to miss it. */
+		if (hasDOM) measureViewport();
+		coreFrame(window.scrollY || 0, vp.height, vp.width);
 	}
 	function onResize() { inst.refresh(); }
 	if (hasDOM) {
@@ -785,7 +819,9 @@ function createCore(opts) {
 const Snowfall = {
 	create: createCore,
 	default: null,
-	version: '0.4',
+	/* 0.4.1 — cached viewport (vp.width=clientWidth, vp.height=innerHeight),
+	   exposed on Snowfall.viewport, consistent vw/vh in step/frame/refresh. */
+	version: '0.4.1',
 	chain: chain,
 	stickyShown: stickyShown,
 	dirCode: dirCode,
@@ -808,6 +844,7 @@ Object.defineProperty(Snowfall, 'events', { get: function() { return Snowfall.de
 Object.defineProperty(Snowfall, 'debug', { get: function() { return Snowfall.default ? Snowfall.default.debug : undefined; } });
 Object.defineProperty(Snowfall, 'options', { get: function() { return Snowfall.default ? Snowfall.default.options : undefined; } });
 Object.defineProperty(Snowfall, 'eventCount', { get: function() { return Snowfall.default ? Snowfall.default.eventCount : undefined; } });
+Object.defineProperty(Snowfall, 'viewport', { get: function() { return Snowfall.default ? Snowfall.default.viewport : undefined; } });
 function boot() {
 	if (typeof window === 'undefined' || typeof document === 'undefined') return;
 	Snowfall.default = Snowfall.create({ scope: document.getElementById('app') || document });
