@@ -31,6 +31,13 @@
 
 ## concepts
 
+	base image (`img/x.ext`)  - outpainted, compressed full background
+	crop (`img/x_c.ext`)      - sharp 1:1 original region ("hd")
+	region                    - crop rect in base pixels {x,y,w,h}; trust detection, not notes
+	storage                   - regions.js, classic <script>, GENERATED + MANUAL blocks (plan-storage.md)
+	layout invariants         - region always visible at zoom 1; cover viewport when possible;
+	                            proven by experiments/layout_test.js
+
 
 ## files
 
